@@ -1,0 +1,53 @@
+import telebot 
+import os 
+from dotenv import load_dotenv
+import requests
+import json
+
+
+load_dotenv()
+
+CHAVE_API_TELE = os.getenv("TOKEN_TELE")
+CHAVE_API_OPEN = os.getenv("TOKEN_OPENROUTER")
+
+if not CHAVE_API_TELE:
+    print("Sem chave API Telgram")
+    exit()
+
+if not CHAVE_API_OPEN:
+    print("Sem chave API OpenRouter")
+    exit()
+
+bot = telebot.TeleBot(CHAVE_API_TELE)
+
+
+@bot.message_handler(commands=["start"])
+def mensagem_boas_vindas(mensagem):
+    bot.reply_to(mensagem, text="Olá, seja bem vindo! Sou o LiveRoute, seu bot de roteiros por Belém do Pará")
+
+@bot.message_handler(func= lambda m: True)
+def copia_texto(mensagem):
+    response = requests.post(
+        url="https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": "Bearer "+ CHAVE_API_OPEN,
+        },
+        data=json.dumps({
+            "model": "openai/gpt-oss-120b:free",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": mensagem.text
+                }
+            ]
+        })
+    )
+    dados = response.json()
+    if "choices" in dados:
+        texto_ia = dados["choices"][0]["message"]["content"]
+        bot.reply_to(mensagem, texto_ia)
+    else: 
+        print("Erro na resposta", dados)
+        
+print("LiveRoute rodando...")
+bot.polling()
